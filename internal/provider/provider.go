@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"terraform-provider-hashicups/internal/datasources/coffees"
 )
 
 // Ensure hashicupsProvider satisfies various provider interfaces.
@@ -188,5 +190,7 @@ func (p *hashicupsProvider) Resources(ctx context.Context) []func() resource.Res
 
 // Resources defines the resources implemented in the provider.
 func (p *hashicupsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		coffees.NewCoffeesDataSource,
+	}
 }
