@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"terraform-provider-hashicups/internal/datasources/coffees"
+	"terraform-provider-hashicups/internal/resources/order"
 )
 
 // Ensure hashicupsProvider satisfies various provider interfaces.
@@ -57,14 +58,17 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Optional: true,
+				Description: "URI for HashiCups API. May also be provided via HASHICUPS_HOST environment variable.",
+				Optional:    true,
 			},
 			"username": schema.StringAttribute{
-				Optional: true,
+				Description: "Username for HashiCups API. May also be provided via HASHICUPS_USERNAME environment variable.",
+				Optional:    true,
 			},
 			"password": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
+				Description: "Password for HashiCups API. May also be provided via HASHICUPS_PASSWORD environment variable.",
+				Optional:    true,
+				Sensitive:   true,
 			},
 		},
 	}
@@ -198,7 +202,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 // DataSources defines the data sources implemented in the provider.
 func (p *hashicupsProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		order.NewOrderResource,
+	}
 }
 
 // Resources defines the resources implemented in the provider.
