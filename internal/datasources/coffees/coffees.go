@@ -7,10 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"terraform-provider-hashicups/internal/client"
 )
 
 // Ensure the implementation satifies the expected interfaces.
@@ -26,7 +27,7 @@ func NewCoffeesDataSource() datasource.DataSource {
 
 // coffeesDataSource is the datasource implementaion
 type coffeesDataSource struct {
-	client *hashicups.Client
+	client *client.Client
 }
 
 // coffeesDataSourceModel maps the data source schema data.
@@ -114,11 +115,11 @@ func (d *coffeesDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	client, ok := req.ProviderData.(*hashicups.Client)
+	client, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *hashicups.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -130,7 +131,7 @@ func (d *coffeesDataSource) Configure(ctx context.Context, req datasource.Config
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	coffees, err := d.client.GetCoffees()
+	coffees, err := d.client.GetCoffees(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read HashiCups Coffees",

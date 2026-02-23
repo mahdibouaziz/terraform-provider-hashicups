@@ -7,7 +7,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -16,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"terraform-provider-hashicups/internal/client"
 	"terraform-provider-hashicups/internal/datasources/coffees"
 	"terraform-provider-hashicups/internal/resources/order"
 )
@@ -42,9 +42,12 @@ type hashicupsProvider struct {
 
 // hashicupsProviderModel maps provider schema data to a Go type
 type hashicupsProviderModel struct {
-	Host     types.String `tfsdk:"host"`
-	Username types.String `tfsdk:"username"`
-	Password types.String `tfsdk:"password"`
+	Host       types.String `tfsdk:"host"`
+	Username   types.String `tfsdk:"username"`
+	Password   types.String `tfsdk:"password"`
+	ClientCert types.String `tfsdk:"client_certificate"`
+	ClientKey  types.String `tfsdk:"client_private_key"`
+	CACert     types.String `tfsdk:"ca_certificate"`
 }
 
 // Metadata returns the provider type name.
@@ -67,6 +70,21 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			},
 			"password": schema.StringAttribute{
 				Description: "Password for HashiCups API. May also be provided via HASHICUPS_PASSWORD environment variable.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+			"client_certificate": schema.StringAttribute{
+				Description: "PEM-encoded client certificate (mTLS). May also be provided via HASHICUPS_CLIENT_CERT environment variable.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+			"client_private_key": schema.StringAttribute{
+				Description: "PEM-encoded private key paired with client_certificate. May also be provided via HASHICUPS_CLIENT_KEY environment variable.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+			"ca_certificate": schema.StringAttribute{
+				Description: "Optional PEM-encoded CA certificate to trust the HashiCups endpoint. May also be provided via HASHICUPS_CA_CERT environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
@@ -114,6 +132,33 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		)
 	}
 
+	if config.ClientCert.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_certificate"),
+			"Unknown HashiCups Client Certificate",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the mTLS client certificate. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_CLIENT_CERT environment variable.",
+		)
+	}
+
+	if config.ClientKey.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_private_key"),
+			"Unknown HashiCups Client Private Key",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the mTLS private key. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_CLIENT_KEY environment variable.",
+		)
+	}
+
+	if config.CACert.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("ca_certificate"),
+			"Unknown HashiCups CA Certificate",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the CA certificate. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_CA_CERT environment variable.",
+		)
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -122,6 +167,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	host := os.Getenv("HASHICUPS_HOST")
 	username := os.Getenv("HASHICUPS_USERNAME")
 	password := os.Getenv("HASHICUPS_PASSWORD")
+	clientCert := os.Getenv("HASHICUPS_CLIENT_CERT")
+	clientKey := os.Getenv("HASHICUPS_CLIENT_KEY")
+	caCert := os.Getenv("HASHICUPS_CA_CERT")
 
 	if !config.Host.IsNull() {
 		host = config.Host.ValueString()
@@ -133,6 +181,18 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	if !config.Password.IsNull() {
 		password = config.Password.ValueString()
+	}
+
+	if !config.ClientCert.IsNull() {
+		clientCert = config.ClientCert.ValueString()
+	}
+
+	if !config.ClientKey.IsNull() {
+		clientKey = config.ClientKey.ValueString()
+	}
+
+	if !config.CACert.IsNull() {
+		caCert = config.CACert.ValueString()
 	}
 
 	// If any of the expected configurations are missing, return
@@ -168,6 +228,26 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		)
 	}
 
+	if clientCert == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_certificate"),
+			"Missing HashiCups Client Certificate",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the mTLS client certificate. "+
+				"Set the client_certificate value in the configuration or use the HASHICUPS_CLIENT_CERT environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if clientKey == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_private_key"),
+			"Missing HashiCups Client Private Key",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the mTLS client private key. "+
+				"Set the client_private_key value in the configuration or use the HASHICUPS_CLIENT_KEY environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -175,13 +255,24 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	ctx = tflog.SetField(ctx, "hashicups_host", host)
 	ctx = tflog.SetField(ctx, "hashicups_username", username)
 	ctx = tflog.SetField(ctx, "hashicups_password", password)
+	ctx = tflog.SetField(ctx, "hashicups_client_certificate", clientCert)
+	ctx = tflog.SetField(ctx, "hashicups_client_private_key", clientKey)
+	ctx = tflog.SetField(ctx, "hashicups_ca_certificate", caCert)
 
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "hashicups_password")
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "hashicups_client_certificate", "hashicups_client_private_key", "hashicups_ca_certificate")
 
 	tflog.Debug(ctx, "Creating HashiCups client")
 
 	// Create a new HashiCups client using the configuration values
-	client, err := hashicups.NewClient(&host, &username, &password)
+	apiClient, err := client.New(client.Config{
+		Host:       host,
+		Username:   username,
+		Password:   password,
+		ClientCert: clientCert,
+		ClientKey:  clientKey,
+		CACert:     caCert,
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create HashiCups API Client",
@@ -194,8 +285,8 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	// Make the HashiCups client available during DataSource and Resource
 	// type Configure methods.
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.DataSourceData = apiClient
+	resp.ResourceData = apiClient
 
 	tflog.Info(ctx, "Configured HashiCups client", map[string]any{"success": true})
 }

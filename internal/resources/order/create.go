@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"terraform-provider-hashicups/internal/client"
 )
 
 // Create creates the resource and sets the initial Terraform state.
@@ -25,11 +26,11 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Generate API Request body from plan
-	var items []hashicups.OrderItem
+	var items []client.OrderItem
 	for _, item := range plan.Items {
-		newItem := hashicups.OrderItem{
+		newItem := client.OrderItem{
 			Quantity: int(item.Quantity.ValueInt64()),
-			Coffee: hashicups.Coffee{
+			Coffee: client.Coffee{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
 		}
@@ -37,7 +38,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Create a new Order
-	order, err := r.client.CreateOrder(items)
+	order, err := r.client.CreateOrder(ctx, items)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",

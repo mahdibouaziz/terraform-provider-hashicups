@@ -7,9 +7,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"terraform-provider-hashicups/internal/client"
 )
 
 // Update updates the resource and sets the updated Terraform state on success.
@@ -23,10 +24,10 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Generate API request from plan
-	var hashicupItems []hashicups.OrderItem
+	var hashicupItems []client.OrderItem
 	for _, item := range plan.Items {
-		hashicupItems = append(hashicupItems, hashicups.OrderItem{
-			Coffee: hashicups.Coffee{
+		hashicupItems = append(hashicupItems, client.OrderItem{
+			Coffee: client.Coffee{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
@@ -34,7 +35,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Update existing order
-	_, err := r.client.UpdateOrder(plan.ID.ValueString(), hashicupItems)
+	_, err := r.client.UpdateOrder(ctx, plan.ID.ValueString(), hashicupItems)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating HashiCups Order",
@@ -44,7 +45,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Fetch updated items from GetOrder as UpdatedOrder items are not populated
-	order, err := r.client.GetOrder(plan.ID.ValueString())
+	order, err := r.client.GetOrder(ctx, plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",

@@ -20,7 +20,7 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 
 	// Delete existing order
-	err := r.client.DeleteOrder(state.ID.ValueString())
+	err := r.client.DeleteOrder(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting HashiCups Order",
