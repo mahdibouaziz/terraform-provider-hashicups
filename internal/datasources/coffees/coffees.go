@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package coffees
 
 import (
@@ -61,29 +64,37 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.Int64Attribute{
-							Computed: true,
+							Description: "Numeric identifier of the coffee.",
+							Computed:    true,
 						},
 						"name": schema.StringAttribute{
-							Computed: true,
+							Description: "Product name of the coffee.",
+							Computed:    true,
 						},
 						"teaser": schema.StringAttribute{
-							Computed: true,
+							Description: "Fun tagline for the coffee.",
+							Computed:    true,
 						},
 						"description": schema.StringAttribute{
-							Computed: true,
+							Description: "Product description of the coffee.",
+							Computed:    true,
 						},
 						"price": schema.Float64Attribute{
-							Computed: true,
+							Description: "Suggested cost of the coffee.",
+							Computed:    true,
 						},
 						"image": schema.StringAttribute{
-							Computed: true,
+							Description: "URI for an image of the coffee.",
+							Computed:    true,
 						},
 						"ingredients": schema.ListNestedAttribute{
-							Computed: true,
+							Description: "List of ingredients in the coffee.",
+							Computed:    true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"id": schema.Int64Attribute{
-										Computed: true,
+										Description: "Numeric identifier of the coffee ingredient.",
+										Computed:    true,
 									},
 								},
 							},
