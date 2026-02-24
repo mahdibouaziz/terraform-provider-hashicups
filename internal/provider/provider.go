@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,21 +71,21 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			},
 			"client_id": schema.StringAttribute{
 				Description: "Client ID for API authentication. May also be provided via HASHICUPS_CLIENT_ID environment variable.",
-				Required:    true,
+				Optional:    true,
 			},
 			"client_secret": schema.StringAttribute{
 				Description: "Client secret for API authentication. May also be provided via HASHICUPS_CLIENT_SECRET environment variable.",
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 			},
 			"client_certificate": schema.StringAttribute{
 				Description: "Path (relative to the Terraform working directory or absolute) to a PEM-encoded client certificate for mTLS. May also be provided via HASHICUPS_CLIENT_CERT environment variable.",
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 			},
 			"client_private_key": schema.StringAttribute{
 				Description: "Path (relative or absolute) to a PEM-encoded private key paired with client_certificate. May also be provided via HASHICUPS_CLIENT_KEY environment variable.",
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 			},
 			"ca_certificate": schema.StringAttribute{
@@ -132,24 +133,6 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 			"Unknown Client Secret",
 			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the client_secret. "+
 				"Set it in the configuration or via HASHICUPS_CLIENT_SECRET.",
-		)
-	}
-
-	if config.Username.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("username"),
-			"Unknown HashiCups API Username",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API username. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_USERNAME environment variable.",
-		)
-	}
-
-	if config.Password.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("password"),
-			"Unknown HashiCups API Password",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API password. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PASSWORD environment variable.",
 		)
 	}
 
