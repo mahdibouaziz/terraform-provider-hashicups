@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -22,13 +25,14 @@ const (
 
 // Config represents the inputs required to build the API client.
 type Config struct {
-	Host         string
-	ClientID     string
-	ClientSecret string
-	ClientCert   string
-	ClientKey    string
-	CACert       string
-	AuthPath     string
+	Host                string
+	ClientID            string
+	ClientSecret        string
+	ClientCert          string
+	ClientKey           string
+	ClientKeyPassphrase string
+	CACert              string
+	AuthPath            string
 }
 
 // Client wraps an HTTP client with mTLS, Basic Auth login and Bearer token refresh.
@@ -84,7 +88,20 @@ func New(cfg Config) (*Client, error) {
 		return nil, errors.New("client private key must be provided")
 	}
 
-	cert, err := tls.X509KeyPair([]byte(cfg.ClientCert), []byte(cfg.ClientKey))
+	keyBytes := []byte(cfg.ClientKey)
+	if strings.TrimSpace(cfg.ClientKeyPassphrase) != "" {
+		parsedKey, err := ssh.ParseRawPrivateKeyWithPassphrase(keyBytes, []byte(cfg.ClientKeyPassphrase))
+		if err != nil {
+			return nil, fmt.Errorf("decrypting private key with passphrase: %w", err)
+		}
+		der, err := x509.MarshalPKCS8PrivateKey(parsedKey)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling decrypted private key: %w", err)
+		}
+		keyBytes = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	}
+
+	cert, err := tls.X509KeyPair([]byte(cfg.ClientCert), keyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("loading client certificate/key pair: %w", err)
 	}

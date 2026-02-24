@@ -47,12 +47,13 @@ type hashicupsProvider struct {
 
 // hashicupsProviderModel maps provider schema data to a Go type
 type hashicupsProviderModel struct {
-	Env          types.String `tfsdk:"env"`
-	ClientID     types.String `tfsdk:"client_id"`
-	ClientSecret types.String `tfsdk:"client_secret"`
-	ClientCert   types.String `tfsdk:"client_certificate"`
-	ClientKey    types.String `tfsdk:"client_private_key"`
-	CACert       types.String `tfsdk:"ca_certificate"`
+	Env                 types.String `tfsdk:"env"`
+	ClientID            types.String `tfsdk:"client_id"`
+	ClientSecret        types.String `tfsdk:"client_secret"`
+	ClientCert          types.String `tfsdk:"client_certificate"`
+	ClientKey           types.String `tfsdk:"client_private_key"`
+	ClientKeyPassphrase types.String `tfsdk:"client_key_passphrase"`
+	CACert              types.String `tfsdk:"ca_certificate"`
 }
 
 // Metadata returns the provider type name.
@@ -85,6 +86,11 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			},
 			"client_private_key": schema.StringAttribute{
 				Description: "Path (relative or absolute) to a PEM-encoded private key paired with client_certificate. May also be provided via HASHICUPS_CLIENT_KEY environment variable.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+			"client_key_passphrase": schema.StringAttribute{
+				Description: "Optional passphrase to decrypt the client private key if it is encrypted. May also be provided via HASHICUPS_CLIENT_KEY_PASSPHRASE environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
@@ -154,6 +160,15 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		)
 	}
 
+	if config.ClientKeyPassphrase.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_key_passphrase"),
+			"Unknown Client Key Passphrase",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the client key passphrase. "+
+				"Set it in the configuration or via HASHICUPS_CLIENT_KEY_PASSPHRASE.",
+		)
+	}
+
 	if config.CACert.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("ca_certificate"),
@@ -173,6 +188,7 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	clientSecret := os.Getenv("HASHICUPS_CLIENT_SECRET")
 	clientCert := os.Getenv("HASHICUPS_CLIENT_CERT")
 	clientKey := os.Getenv("HASHICUPS_CLIENT_KEY")
+	clientPassphrase := os.Getenv("HASHICUPS_CLIENT_KEY_PASSPHRASE")
 	caCert := os.Getenv("HASHICUPS_CA_CERT")
 
 	if !config.Env.IsNull() {
@@ -193,6 +209,10 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	if !config.ClientKey.IsNull() {
 		clientKey = config.ClientKey.ValueString()
+	}
+
+	if !config.ClientKeyPassphrase.IsNull() {
+		clientPassphrase = config.ClientKeyPassphrase.ValueString()
 	}
 
 	if !config.CACert.IsNull() {
@@ -301,12 +321,13 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	// Create a new HashiCups client using the configuration values
 	apiClient, err := client.New(client.Config{
-		Host:         host,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		ClientCert:   clientCertContent,
-		ClientKey:    clientKeyContent,
-		CACert:       caCertContent,
+		Host:                host,
+		ClientID:            clientID,
+		ClientSecret:        clientSecret,
+		ClientCert:          clientCertContent,
+		ClientKey:           clientKeyContent,
+		ClientKeyPassphrase: clientPassphrase,
+		CACert:              caCertContent,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
