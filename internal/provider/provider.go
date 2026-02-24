@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -76,17 +78,17 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				Sensitive:   true,
 			},
 			"client_certificate": schema.StringAttribute{
-				Description: "PEM-encoded client certificate (mTLS). May also be provided via HASHICUPS_CLIENT_CERT environment variable.",
+				Description: "Path (relative to the Terraform working directory or absolute) to a PEM-encoded client certificate for mTLS. May also be provided via HASHICUPS_CLIENT_CERT environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
 			"client_private_key": schema.StringAttribute{
-				Description: "PEM-encoded private key paired with client_certificate. May also be provided via HASHICUPS_CLIENT_KEY environment variable.",
+				Description: "Path (relative or absolute) to a PEM-encoded private key paired with client_certificate. May also be provided via HASHICUPS_CLIENT_KEY environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
 			"ca_certificate": schema.StringAttribute{
-				Description: "Optional PEM-encoded CA certificate to trust the HashiCups endpoint. May also be provided via HASHICUPS_CA_CERT environment variable.",
+				Description: "Optional path (relative or absolute) to a PEM-encoded CA certificate to trust the HashiCups endpoint. May also be provided via HASHICUPS_CA_CERT environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
@@ -197,6 +199,33 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		caCert = config.CACert.ValueString()
 	}
 
+	// Resolve certificate inputs which are expected to be file paths (relative to
+	// the Terraform working directory) or raw PEM strings for backward compatibility.
+	clientCertContent, err := loadPEMContent(clientCert)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_certificate"),
+			"Invalid Client Certificate Path",
+			err.Error(),
+		)
+	}
+	clientKeyContent, err := loadPEMContent(clientKey)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("client_private_key"),
+			"Invalid Client Private Key Path",
+			err.Error(),
+		)
+	}
+	caCertContent, err := loadPEMContent(caCert)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("ca_certificate"),
+			"Invalid CA Certificate Path",
+			err.Error(),
+		)
+	}
+
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
 
@@ -271,9 +300,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		Host:       host,
 		Username:   username,
 		Password:   password,
-		ClientCert: clientCert,
-		ClientKey:  clientKey,
-		CACert:     caCert,
+		ClientCert: clientCertContent,
+		ClientKey:  clientKeyContent,
+		CACert:     caCertContent,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -291,6 +320,35 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	resp.ResourceData = apiClient
 
 	tflog.Info(ctx, "Configured HashiCups client", map[string]any{"success": true})
+}
+
+// loadPEMContent returns PEM content. If the input contains PEM headers, it is
+// returned as-is for backward compatibility; otherwise the string is treated as
+// a path (relative to the current working directory if not absolute) and the
+// file contents are returned.
+func loadPEMContent(value string) (string, error) {
+	if strings.TrimSpace(value) == "" {
+		return "", nil
+	}
+
+	if strings.Contains(value, "-----BEGIN") {
+		return value, nil
+	}
+
+	path := value
+	if !filepath.IsAbs(path) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		path = filepath.Join(wd, value)
+	}
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 // DataSources defines the data sources implemented in the provider.
