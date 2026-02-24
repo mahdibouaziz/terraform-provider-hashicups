@@ -46,7 +46,7 @@ type hashicupsProvider struct {
 
 // hashicupsProviderModel maps provider schema data to a Go type
 type hashicupsProviderModel struct {
-	Host       types.String `tfsdk:"host"`
+	Env        types.String `tfsdk:"env"`
 	Username   types.String `tfsdk:"username"`
 	Password   types.String `tfsdk:"password"`
 	ClientCert types.String `tfsdk:"client_certificate"`
@@ -64,9 +64,9 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"host": schema.StringAttribute{
-				Description: "URI for HashiCups API. May also be provided via HASHICUPS_HOST environment variable.",
-				Optional:    true,
+			"env": schema.StringAttribute{
+				Description: "Target environment for the API (prod or preprod). May also be provided via HASHICUPS_ENV environment variable.",
+				Required:    true,
 			},
 			"username": schema.StringAttribute{
 				Description: "Username for HashiCups API. May also be provided via HASHICUPS_USERNAME environment variable.",
@@ -109,12 +109,12 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	}
 
 	// verify all the values are known
-	if config.Host.IsUnknown() {
+	if config.Env.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Unknown Hashicup API Host",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API host. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_HOST environment variable.",
+			path.Root("env"),
+			"Unknown HashiCups Environment",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the environment. "+
+				"Set env to \"prod\" or \"preprod\", or use the HASHICUPS_ENV environment variable.",
 		)
 	}
 
@@ -168,15 +168,15 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	}
 
 	// Default values to environment variables, but ovverride with Terraform configuration value if set
-	host := os.Getenv("HASHICUPS_HOST")
+	env := os.Getenv("HASHICUPS_ENV")
 	username := os.Getenv("HASHICUPS_USERNAME")
 	password := os.Getenv("HASHICUPS_PASSWORD")
 	clientCert := os.Getenv("HASHICUPS_CLIENT_CERT")
 	clientKey := os.Getenv("HASHICUPS_CLIENT_KEY")
 	caCert := os.Getenv("HASHICUPS_CA_CERT")
 
-	if !config.Host.IsNull() {
-		host = config.Host.ValueString()
+	if !config.Env.IsNull() {
+		env = config.Env.ValueString()
 	}
 
 	if !config.Username.IsNull() {
@@ -229,13 +229,12 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
 
-	if host == "" {
+	if env == "" {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Missing HashiCups API Host",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API host. "+
-				"Set the host value in the configuration or use the HASHICUPS_HOST environment variable. "+
-				"If either is already set, ensure the value is not empty.",
+			path.Root("env"),
+			"Missing HashiCups Environment",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the environment. "+
+				"Set env to \"prod\" or \"preprod\", or use the HASHICUPS_ENV environment variable.",
 		)
 	}
 
@@ -280,6 +279,16 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	}
 
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	host, err := resolveHost(env)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("env"),
+			"Invalid HashiCups Environment",
+			err.Error(),
+		)
 		return
 	}
 
@@ -349,6 +358,19 @@ func loadPEMContent(value string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+const apiBase = "https://api-platform-mtls.cib.echonet"
+
+func resolveHost(env string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(env)) {
+	case "prod":
+		return apiBase + "/ito-prod-rose-robotics/v1", nil
+	case "preprod":
+		return apiBase + "/ito-prod-rose-robotics-preprod/v1", nil
+	default:
+		return "", fmt.Errorf("env must be \"prod\" or \"preprod\"")
+	}
 }
 
 // DataSources defines the data sources implemented in the provider.
