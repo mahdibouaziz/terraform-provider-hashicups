@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -20,18 +19,13 @@ func (r *vmResource) Update(ctx context.Context, req resource.UpdateRequest, res
 
 	payload := vmPayloadFromPlan(plan)
 
-	if err := r.client.Put(ctx, fmt.Sprintf("/vms/%s", plan.ID.ValueString()), payload, nil); err != nil {
-		resp.Diagnostics.AddError("Error updating VM", "Could not update VM: "+err.Error())
+	vm, err := r.service.Update(ctx, plan.ID.ValueString(), payload)
+	if err != nil {
+		resp.Diagnostics.AddError("Error updating VM", "Could not update/read VM: "+err.Error())
 		return
 	}
 
-	var vm apiVM
-	if err := r.client.Get(ctx, "/vms/"+plan.ID.ValueString(), &vm); err != nil {
-		resp.Diagnostics.AddError("Error reading VM", "Could not read VM "+plan.ID.ValueString()+": "+err.Error())
-		return
-	}
-
-	plan = vmPlanFromAPI(plan, vm)
+	plan = vmPlanFromAPI(plan, *vm)
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	diags = resp.State.Set(ctx, plan)

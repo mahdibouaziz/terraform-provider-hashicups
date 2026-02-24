@@ -2,7 +2,6 @@ package loadbalancer
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -20,18 +19,13 @@ func (r *loadBalancerResource) Update(ctx context.Context, req resource.UpdateRe
 
 	payload := lbPayloadFromPlan(plan)
 
-	if err := r.client.Put(ctx, fmt.Sprintf("/loadbalancers/%s", plan.ID.ValueString()), payload, nil); err != nil {
-		resp.Diagnostics.AddError("Error updating load balancer", "Could not update load balancer: "+err.Error())
+	lb, err := r.service.Update(ctx, plan.ID.ValueString(), payload)
+	if err != nil {
+		resp.Diagnostics.AddError("Error updating load balancer", "Could not update/read load balancer: "+err.Error())
 		return
 	}
 
-	var lb apiLoadBalancer
-	if err := r.client.Get(ctx, "/loadbalancers/"+plan.ID.ValueString(), &lb); err != nil {
-		resp.Diagnostics.AddError("Error reading load balancer", "Could not read load balancer "+plan.ID.ValueString()+": "+err.Error())
-		return
-	}
-
-	plan = lbPlanFromAPI(plan, lb)
+	plan = lbPlanFromAPI(plan, *lb)
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	diags = resp.State.Set(ctx, plan)

@@ -15,13 +15,13 @@ func (r *loadBalancerResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	var lb apiLoadBalancer
-	if err := r.client.Get(ctx, "/loadbalancers/"+state.ID.ValueString(), &lb); err != nil {
+	lb, err := r.service.Get(ctx, state.ID.ValueString())
+	if err != nil {
 		resp.Diagnostics.AddError("Error reading load balancer", "Could not read load balancer "+state.ID.ValueString()+": "+err.Error())
 		return
 	}
 
-	state = lbPlanFromAPI(state, lb)
+	state = lbPlanFromAPI(state, *lb)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

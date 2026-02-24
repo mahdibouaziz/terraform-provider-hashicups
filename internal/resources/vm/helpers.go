@@ -4,10 +4,12 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	clientvm "terraform-provider-hashicups/internal/client/vm"
 )
 
-func vmPayloadFromPlan(plan vmResourceModel) apiVMPayload {
-	payload := apiVMPayload{
+func vmPayloadFromPlan(plan vmResourceModel) clientvm.VMPayload {
+	payload := clientvm.VMPayload{
 		Name:     plan.Name.ValueString(),
 		Image:    plan.Image.ValueString(),
 		CPU:      int(plan.CPU.ValueInt64()),
@@ -27,7 +29,7 @@ func vmPayloadFromPlan(plan vmResourceModel) apiVMPayload {
 	return payload
 }
 
-func vmPlanFromAPI(plan vmResourceModel, vm apiVM) vmResourceModel {
+func vmPlanFromAPI(plan vmResourceModel, vm clientvm.VM) vmResourceModel {
 	plan.ID = types.StringValue(strconv.Itoa(vm.ID))
 	plan.Name = types.StringValue(vm.Name)
 	plan.Image = types.StringValue(vm.Image)

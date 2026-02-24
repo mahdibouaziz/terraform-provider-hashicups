@@ -15,7 +15,7 @@ func (r *loadBalancerResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	if err := r.client.Delete(ctx, "/loadbalancers/"+state.ID.ValueString()); err != nil {
+	if err := r.service.Delete(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Error deleting load balancer", "Could not delete load balancer: "+err.Error())
 		return
 	}

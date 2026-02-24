@@ -4,10 +4,12 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	clientlb "terraform-provider-hashicups/internal/client/loadbalancer"
 )
 
-func lbPayloadFromPlan(plan loadBalancerResourceModel) apiLoadBalancerPayload {
-	payload := apiLoadBalancerPayload{
+func lbPayloadFromPlan(plan loadBalancerResourceModel) clientlb.Payload {
+	payload := clientlb.Payload{
 		Name:     plan.Name.ValueString(),
 		Protocol: plan.Protocol.ValueString(),
 		Port:     int(plan.Port.ValueInt64()),
@@ -18,7 +20,7 @@ func lbPayloadFromPlan(plan loadBalancerResourceModel) apiLoadBalancerPayload {
 	}
 
 	for _, t := range plan.Targets {
-		payload.Targets = append(payload.Targets, apiTarget{
+		payload.Targets = append(payload.Targets, clientlb.Target{
 			Address: t.Address.ValueString(),
 			Port:    int(t.Port.ValueInt64()),
 		})
@@ -27,7 +29,7 @@ func lbPayloadFromPlan(plan loadBalancerResourceModel) apiLoadBalancerPayload {
 	return payload
 }
 
-func lbPlanFromAPI(plan loadBalancerResourceModel, lb apiLoadBalancer) loadBalancerResourceModel {
+func lbPlanFromAPI(plan loadBalancerResourceModel, lb clientlb.LoadBalancer) loadBalancerResourceModel {
 	plan.ID = types.StringValue(strconv.Itoa(lb.ID))
 	plan.Name = types.StringValue(lb.Name)
 	plan.Protocol = types.StringValue(lb.Protocol)

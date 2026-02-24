@@ -20,13 +20,13 @@ func (r *loadBalancerResource) Create(ctx context.Context, req resource.CreateRe
 
 	payload := lbPayloadFromPlan(plan)
 
-	var lb apiLoadBalancer
-	if err := r.client.Post(ctx, "/loadbalancers", payload, &lb); err != nil {
+	lb, err := r.service.Create(ctx, payload)
+	if err != nil {
 		resp.Diagnostics.AddError("Error creating load balancer", "Could not create load balancer: "+err.Error())
 		return
 	}
 
-	plan = lbPlanFromAPI(plan, lb)
+	plan = lbPlanFromAPI(plan, *lb)
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 	plan.ID = types.StringValue(strconv.Itoa(lb.ID))
 

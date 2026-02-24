@@ -15,13 +15,13 @@ func (r *vmResource) Read(ctx context.Context, req resource.ReadRequest, resp *r
 		return
 	}
 
-	var vm apiVM
-	if err := r.client.Get(ctx, "/vms/"+state.ID.ValueString(), &vm); err != nil {
+	vm, err := r.service.Get(ctx, state.ID.ValueString())
+	if err != nil {
 		resp.Diagnostics.AddError("Error reading VM", "Could not read VM "+state.ID.ValueString()+": "+err.Error())
 		return
 	}
 
-	state = vmPlanFromAPI(state, vm)
+	state = vmPlanFromAPI(state, *vm)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

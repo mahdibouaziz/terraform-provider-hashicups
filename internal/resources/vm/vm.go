@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-hashicups/internal/client"
+	clientvm "terraform-provider-hashicups/internal/client/vm"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -45,7 +46,8 @@ type vmResourceModel struct {
 
 // vmResource is the resource implementation.
 type vmResource struct {
-	client client.HTTPClient
+	client  client.HTTPClient
+	service *clientvm.Service
 }
 
 // Metadata returns the resource type name.
@@ -129,6 +131,7 @@ func (r *vmResource) Configure(_ context.Context, req resource.ConfigureRequest,
 	}
 
 	r.client = client
+	r.service = clientvm.NewService(client)
 }
 
 // ImportState allows `terraform import` to work for this resource.

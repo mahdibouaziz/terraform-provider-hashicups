@@ -1,7 +1,7 @@
 package vm
 
-// apiVM mirrors the VM object returned by the HashiCups API.
-type apiVM struct {
+// VM represents a virtual machine returned by the API.
+type VM struct {
 	ID        int      `json:"id"`
 	Name      string   `json:"name"`
 	Image     string   `json:"image"`
@@ -16,8 +16,8 @@ type apiVM struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// apiVMPayload is the payload shape expected by the HashiCups VM endpoint.
-type apiVMPayload struct {
+// VMPayload is the request body for creating/updating a VM.
+type VMPayload struct {
 	Name      string   `json:"name"`
 	Image     string   `json:"image"`
 	CPU       int      `json:"cpu"`

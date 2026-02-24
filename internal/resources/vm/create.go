@@ -19,13 +19,13 @@ func (r *vmResource) Create(ctx context.Context, req resource.CreateRequest, res
 
 	payload := vmPayloadFromPlan(plan)
 
-	var vm apiVM
-	if err := r.client.Post(ctx, "/vms", payload, &vm); err != nil {
+	vm, err := r.service.Create(ctx, payload)
+	if err != nil {
 		resp.Diagnostics.AddError("Error creating VM", "Could not create VM: "+err.Error())
 		return
 	}
 
-	plan = vmPlanFromAPI(plan, vm)
+	plan = vmPlanFromAPI(plan, *vm)
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	diags = resp.State.Set(ctx, plan)

@@ -15,7 +15,7 @@ func (r *vmResource) Delete(ctx context.Context, req resource.DeleteRequest, res
 		return
 	}
 
-	if err := r.client.Delete(ctx, "/vms/"+state.ID.ValueString()); err != nil {
+	if err := r.service.Delete(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Error deleting VM", "Could not delete VM: "+err.Error())
 		return
 	}

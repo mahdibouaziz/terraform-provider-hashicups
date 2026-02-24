@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-hashicups/internal/client"
+	clientlb "terraform-provider-hashicups/internal/client/loadbalancer"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -46,7 +47,8 @@ type loadBalancerTargetModel struct {
 
 // loadBalancerResource is the resource implementation.
 type loadBalancerResource struct {
-	client client.HTTPClient
+	client  client.HTTPClient
+	service *clientlb.Service
 }
 
 // Metadata returns the resource type name.
@@ -129,6 +131,7 @@ func (r *loadBalancerResource) Configure(_ context.Context, req resource.Configu
 	}
 
 	r.client = client
+	r.service = clientlb.NewService(client)
 }
 
 // ImportState allows `terraform import` to work for this resource.
