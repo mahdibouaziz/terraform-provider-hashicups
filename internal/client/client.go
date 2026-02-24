@@ -22,21 +22,21 @@ const (
 
 // Config represents the inputs required to build the API client.
 type Config struct {
-	Host       string
-	Username   string
-	Password   string
-	ClientCert string
-	ClientKey  string
-	CACert     string
-	AuthPath   string
+	Host         string
+	ClientID     string
+	ClientSecret string
+	ClientCert   string
+	ClientKey    string
+	CACert       string
+	AuthPath     string
 }
 
 // Client wraps an HTTP client with mTLS, Basic Auth login and Bearer token refresh.
 type Client struct {
-	baseURL    string
-	username   string
-	password   string
-	httpClient *http.Client
+	baseURL      string
+	clientID     string
+	clientSecret string
+	httpClient   *http.Client
 
 	mu          sync.Mutex
 	token       string
@@ -71,11 +71,11 @@ func New(cfg Config) (*Client, error) {
 	if cfg.Host == "" {
 		return nil, errors.New("host must be provided")
 	}
-	if cfg.Username == "" {
-		return nil, errors.New("username must be provided")
+	if cfg.ClientID == "" {
+		return nil, errors.New("client id must be provided")
 	}
-	if cfg.Password == "" {
-		return nil, errors.New("password must be provided")
+	if cfg.ClientSecret == "" {
+		return nil, errors.New("client secret must be provided")
 	}
 	if cfg.ClientCert == "" {
 		return nil, errors.New("client certificate must be provided")
@@ -111,11 +111,11 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		baseURL:    baseURL,
-		username:   cfg.Username,
-		password:   cfg.Password,
-		httpClient: &http.Client{Transport: transport, Timeout: 30 * time.Second},
-		authPath:   authPath,
+		baseURL:      baseURL,
+		clientID:     cfg.ClientID,
+		clientSecret: cfg.ClientSecret,
+		httpClient:   &http.Client{Transport: transport, Timeout: 30 * time.Second},
+		authPath:     authPath,
 	}, nil
 }
 
@@ -216,7 +216,7 @@ func (c *Client) ensureToken(ctx context.Context, reauth bool) error {
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(c.username, c.password)
+	req.SetBasicAuth(c.clientID, c.clientSecret)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
