@@ -20,6 +20,7 @@ import (
 
 	"terraform-provider-hashicups/internal/client"
 	"terraform-provider-hashicups/internal/datasources/coffees"
+	"terraform-provider-hashicups/internal/datasources/nodes"
 	"terraform-provider-hashicups/internal/resources/loadbalancer"
 	"terraform-provider-hashicups/internal/resources/order"
 	"terraform-provider-hashicups/internal/resources/vm"
@@ -402,5 +403,6 @@ func (p *hashicupsProvider) Resources(ctx context.Context) []func() resource.Res
 func (p *hashicupsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		coffees.NewCoffeesDataSource,
+		nodes.NewNodesDataSource,
 	}
 }
