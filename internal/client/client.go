@@ -48,12 +48,10 @@ type Client struct {
 	authPath    string
 }
 
-// tokenResponse captures common fields returned by token endpoints.
+// tokenResponse captures the minimal fields returned by the token endpoint.
 type tokenResponse struct {
-	Token       string `json:"token"`
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int64  `json:"expires_in"`
-	ExpiresAt   string `json:"expires_at"`
 }
 
 // HTTPClient exposes the minimal surface needed by resources to perform
@@ -252,25 +250,16 @@ func (c *Client) ensureToken(ctx context.Context, reauth bool) error {
 		return fmt.Errorf("decoding token response: %w", err)
 	}
 
-	token := tokenRes.Token
-	if token == "" {
-		token = tokenRes.AccessToken
-	}
-	if token == "" {
-		return errors.New("token response did not include a token")
+	if tokenRes.AccessToken == "" {
+		return errors.New("token response did not include access_token")
 	}
 
-	expiry := now.Add(5 * time.Minute)
-	switch {
-	case tokenRes.ExpiresIn > 0:
+	expiry := now.Add(30 * time.Minute)
+	if tokenRes.ExpiresIn > 0 {
 		expiry = now.Add(time.Duration(tokenRes.ExpiresIn) * time.Second)
-	case tokenRes.ExpiresAt != "":
-		if t, err := time.Parse(time.RFC3339, tokenRes.ExpiresAt); err == nil {
-			expiry = t
-		}
 	}
 
-	c.token = token
+	c.token = tokenRes.AccessToken
 	c.tokenExpiry = expiry
 
 	return nil
