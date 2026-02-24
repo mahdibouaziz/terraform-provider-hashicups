@@ -17,7 +17,9 @@ import (
 
 	"terraform-provider-hashicups/internal/client"
 	"terraform-provider-hashicups/internal/datasources/coffees"
+	"terraform-provider-hashicups/internal/resources/loadbalancer"
 	"terraform-provider-hashicups/internal/resources/order"
+	"terraform-provider-hashicups/internal/resources/vm"
 )
 
 // Ensure hashicupsProvider satisfies various provider interfaces.
@@ -295,6 +297,8 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 func (p *hashicupsProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		order.NewOrderResource,
+		vm.NewVMResource,
+		loadbalancer.NewLoadBalancerResource,
 	}
 }
 

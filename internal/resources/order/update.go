@@ -5,12 +5,11 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"terraform-provider-hashicups/internal/client"
 )
 
 // Update updates the resource and sets the updated Terraform state on success.
@@ -24,10 +23,10 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Generate API request from plan
-	var hashicupItems []client.OrderItem
+	var hashicupItems []apiOrderItemPayload
 	for _, item := range plan.Items {
-		hashicupItems = append(hashicupItems, client.OrderItem{
-			Coffee: client.Coffee{
+		hashicupItems = append(hashicupItems, apiOrderItemPayload{
+			Coffee: apiOrderItemCoffeePayload{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
@@ -35,7 +34,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Update existing order
-	_, err := r.client.UpdateOrder(ctx, plan.ID.ValueString(), hashicupItems)
+	err := r.client.Put(ctx, fmt.Sprintf("/orders/%s", plan.ID.ValueString()), map[string]any{"items": hashicupItems}, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating HashiCups Order",
@@ -45,7 +44,8 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Fetch updated items from GetOrder as UpdatedOrder items are not populated
-	order, err := r.client.GetOrder(ctx, plan.ID.ValueString())
+	var order apiOrder
+	err = r.client.Get(ctx, fmt.Sprintf("/orders/%s", plan.ID.ValueString()), &order)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",

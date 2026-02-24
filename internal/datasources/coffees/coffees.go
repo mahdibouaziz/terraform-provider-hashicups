@@ -27,12 +27,27 @@ func NewCoffeesDataSource() datasource.DataSource {
 
 // coffeesDataSource is the datasource implementaion
 type coffeesDataSource struct {
-	client *client.Client
+	client client.HTTPClient
 }
 
 // coffeesDataSourceModel maps the data source schema data.
 type coffeesDataSourceModel struct {
 	Coffees []coffeesModel `tfsdk:"coffees"`
+}
+
+// coffeeAPIModel mirrors the coffee payload returned by the HashiCups API.
+type coffeeAPIModel struct {
+	ID          int                  `json:"id"`
+	Name        string               `json:"name"`
+	Teaser      string               `json:"teaser"`
+	Description string               `json:"description"`
+	Price       float64              `json:"price"`
+	Image       string               `json:"image"`
+	Ingredient  []ingredientAPIModel `json:"ingredients"`
+}
+
+type ingredientAPIModel struct {
+	ID int `json:"id"`
 }
 
 // coffeesModel maps coffees schema data.
@@ -115,11 +130,11 @@ func (d *coffeesDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(client.HTTPClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected client.HTTPClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -131,7 +146,8 @@ func (d *coffeesDataSource) Configure(ctx context.Context, req datasource.Config
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	coffees, err := d.client.GetCoffees(ctx)
+	var coffees []coffeeAPIModel
+	err := d.client.Get(ctx, "/coffees", &coffees)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read HashiCups Coffees",

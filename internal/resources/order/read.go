@@ -21,7 +21,8 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Get refreshed order value from HashiCups
-	order, err := r.client.GetOrder(ctx, state.ID.ValueString())
+	var order apiOrder
+	err := r.client.Get(ctx, "/orders/"+state.ID.ValueString(), &order)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",

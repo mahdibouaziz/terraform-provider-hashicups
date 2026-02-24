@@ -10,8 +10,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"terraform-provider-hashicups/internal/client"
 )
 
 // Create creates the resource and sets the initial Terraform state.
@@ -26,19 +24,19 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Generate API Request body from plan
-	var items []client.OrderItem
+	var items []apiOrderItemPayload
 	for _, item := range plan.Items {
-		newItem := client.OrderItem{
+		items = append(items, apiOrderItemPayload{
 			Quantity: int(item.Quantity.ValueInt64()),
-			Coffee: client.Coffee{
+			Coffee: apiOrderItemCoffeePayload{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
-		}
-		items = append(items, newItem)
+		})
 	}
 
 	// Create a new Order
-	order, err := r.client.CreateOrder(ctx, items)
+	var order apiOrder
+	err := r.client.Post(ctx, "/orders", map[string]any{"items": items}, &order)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",
@@ -49,8 +47,9 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.StringValue(strconv.Itoa(order.ID))
-	for index, item := range order.Items {
-		plan.Items[index] = orderItemModel{
+	plan.Items = make([]orderItemModel, 0, len(order.Items))
+	for _, item := range order.Items {
+		plan.Items = append(plan.Items, orderItemModel{
 			Quantity: types.Int64Value(int64(item.Quantity)),
 			Coffee: orderItemCoffeeModel{
 				ID:          types.Int64Value(int64(item.Coffee.ID)),
@@ -60,7 +59,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 				Price:       types.Float64Value(item.Coffee.Price),
 				Image:       types.StringValue(item.Coffee.Image),
 			},
-		}
+		})
 	}
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 

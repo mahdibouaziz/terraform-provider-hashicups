@@ -28,6 +28,7 @@ type Config struct {
 	ClientCert string
 	ClientKey  string
 	CACert     string
+	AuthPath   string
 }
 
 // Client wraps an HTTP client with mTLS, Basic Auth login and Bearer token refresh.
@@ -50,6 +51,20 @@ type tokenResponse struct {
 	ExpiresIn   int64  `json:"expires_in"`
 	ExpiresAt   string `json:"expires_at"`
 }
+
+// HTTPClient exposes the minimal surface needed by resources to perform
+// authenticated JSON requests. It lets resource packages remain decoupled
+// from the underlying authentication and mTLS setup while still sharing the
+// refreshable bearer token logic.
+type HTTPClient interface {
+	Request(ctx context.Context, method, path string, body any, out any) error
+	Get(ctx context.Context, path string, out any) error
+	Post(ctx context.Context, path string, body any, out any) error
+	Put(ctx context.Context, path string, body any, out any) error
+	Delete(ctx context.Context, path string) error
+}
+
+var _ HTTPClient = (*Client)(nil)
 
 // New constructs a Client configured for mTLS and token-based authentication.
 func New(cfg Config) (*Client, error) {
@@ -90,14 +105,43 @@ func New(cfg Config) (*Client, error) {
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 
 	baseURL := strings.TrimRight(cfg.Host, "/")
+	authPath := defaultAuthPath
+	if strings.TrimSpace(cfg.AuthPath) != "" {
+		authPath = cfg.AuthPath
+	}
 
 	return &Client{
 		baseURL:    baseURL,
 		username:   cfg.Username,
 		password:   cfg.Password,
 		httpClient: &http.Client{Transport: transport, Timeout: 30 * time.Second},
-		authPath:   defaultAuthPath,
+		authPath:   authPath,
 	}, nil
+}
+
+// Request executes an authenticated request and decodes JSON into out.
+func (c *Client) Request(ctx context.Context, method, path string, body any, out any) error {
+	return c.do(ctx, method, path, body, out)
+}
+
+// Get performs an authenticated GET request.
+func (c *Client) Get(ctx context.Context, path string, out any) error {
+	return c.do(ctx, http.MethodGet, path, nil, out)
+}
+
+// Post performs an authenticated POST request with a JSON body.
+func (c *Client) Post(ctx context.Context, path string, body any, out any) error {
+	return c.do(ctx, http.MethodPost, path, body, out)
+}
+
+// Put performs an authenticated PUT request with a JSON body.
+func (c *Client) Put(ctx context.Context, path string, body any, out any) error {
+	return c.do(ctx, http.MethodPut, path, body, out)
+}
+
+// Delete performs an authenticated DELETE request.
+func (c *Client) Delete(ctx context.Context, path string) error {
+	return c.do(ctx, http.MethodDelete, path, nil, nil)
 }
 
 // do performs an authenticated HTTP request, refreshing the bearer token as needed.

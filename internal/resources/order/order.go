@@ -54,7 +54,7 @@ type orderItemCoffeeModel struct {
 
 // orderResource is the resource implementation.
 type orderResource struct {
-	client *client.Client
+	client client.HTTPClient
 }
 
 // Metadata returns the resource type name.
@@ -131,12 +131,12 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(client.HTTPClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected client.HTTPClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
