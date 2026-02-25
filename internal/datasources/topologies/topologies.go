@@ -2,6 +2,7 @@ package topologies
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -48,7 +49,6 @@ type topologyModel struct {
 	ID                  types.String `tfsdk:"id"`
 	Ecosystem           types.String `tfsdk:"ecosystem"`
 	MetadataJSON        types.String `tfsdk:"metadata_json"`
-	ServiceNowGroup     types.String `tfsdk:"service_now_assignment_group"`
 	TemplateName        types.String `tfsdk:"template_name"`
 	TemplateAuthor      types.String `tfsdk:"template_author"`
 	TemplateVersion     types.String `tfsdk:"template_version"`
@@ -60,10 +60,7 @@ type topologyModel struct {
 	CreatedAt           types.String `tfsdk:"created_at"`
 	UpdatedAt           types.String `tfsdk:"updated_at"`
 	Mock                types.Bool   `tfsdk:"mock"`
-	GreedyResolution    types.Bool   `tfsdk:"greedy_resolution"`
-	PoliciesJSON        types.String `tfsdk:"policies_json"`
-	AttributesJSON      types.String `tfsdk:"attributes_json"`
-	Owner               types.String `tfsdk:"owner"`
+	OwnerJSON           types.String `tfsdk:"owner_json"`
 }
 
 func (d *topologiesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -89,25 +86,21 @@ func (d *topologiesDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Description: "Topologies list.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":                           schema.StringAttribute{Computed: true},
-						"ecosystem":                    schema.StringAttribute{Computed: true},
-						"metadata_json":                schema.StringAttribute{Computed: true},
-						"service_now_assignment_group": schema.StringAttribute{Computed: true},
-						"template_name":                schema.StringAttribute{Computed: true},
-						"template_author":              schema.StringAttribute{Computed: true},
-						"template_version":             schema.StringAttribute{Computed: true},
-						"additional_properties_json":   schema.StringAttribute{Computed: true},
-						"state":                        schema.StringAttribute{Computed: true},
-						"env":                          schema.StringAttribute{Computed: true},
-						"name":                         schema.StringAttribute{Computed: true},
-						"substitution_node_id":         schema.StringAttribute{Computed: true},
-						"created_at":                   schema.StringAttribute{Computed: true},
-						"updated_at":                   schema.StringAttribute{Computed: true},
-						"mock":                         schema.BoolAttribute{Computed: true},
-						"greedy_resolution":            schema.BoolAttribute{Computed: true},
-						"policies_json":                schema.StringAttribute{Computed: true},
-						"attributes_json":              schema.StringAttribute{Computed: true},
-						"owner":                        schema.StringAttribute{Computed: true},
+						"id":                         schema.StringAttribute{Computed: true},
+						"ecosystem":                  schema.StringAttribute{Computed: true},
+						"metadata_json":              schema.StringAttribute{Computed: true},
+						"template_name":              schema.StringAttribute{Computed: true},
+						"template_author":            schema.StringAttribute{Computed: true},
+						"template_version":           schema.StringAttribute{Computed: true},
+						"additional_properties_json": schema.StringAttribute{Computed: true},
+						"state":                      schema.StringAttribute{Computed: true},
+						"env":                        schema.StringAttribute{Computed: true},
+						"name":                       schema.StringAttribute{Computed: true},
+						"substitution_node_id":       schema.StringAttribute{Computed: true},
+						"created_at":                 schema.StringAttribute{Computed: true},
+						"updated_at":                 schema.StringAttribute{Computed: true},
+						"mock":                       schema.BoolAttribute{Computed: true},
+						"owner_json":                 schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -194,12 +187,10 @@ func (d *topologiesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 func mapTopologyToModel(t clienttopo.Topology) topologyModel {
 	metadataJSON := rawToStringFromStruct(t.Metadata)
-	ownerJSON := rawToStringFromStruct(t.Metadata.Owner)
 	return topologyModel{
 		ID:                  types.StringValue(t.ID),
 		Ecosystem:           types.StringValue(t.Ecosystem),
 		MetadataJSON:        metadataJSON,
-		ServiceNowGroup:     types.StringValue(t.Metadata.ServiceNowAssignment),
 		TemplateName:        types.StringValue(t.Metadata.TemplateName),
 		TemplateAuthor:      types.StringValue(t.Metadata.TemplateAuthor),
 		TemplateVersion:     types.StringValue(t.Metadata.TemplateVersion),
@@ -211,10 +202,7 @@ func mapTopologyToModel(t clienttopo.Topology) topologyModel {
 		CreatedAt:           types.StringValue(t.CreatedAt),
 		UpdatedAt:           types.StringValue(t.UpdatedAt),
 		Mock:                types.BoolValue(t.Mock),
-		GreedyResolution:    boolOrNull(t.GreedyResolution),
-		PoliciesJSON:        rawToString(t.Policies),
-		AttributesJSON:      rawToString(t.Attributes),
-		Owner:               ownerJSON,
+		OwnerJSON:           rawToStringFromStruct(t.Metadata.Owner),
 	}
 }
 
