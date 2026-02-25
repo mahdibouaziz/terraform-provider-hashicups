@@ -179,12 +179,12 @@ func mapTopologyToModel(t clienttopo.Topology) topologyModel {
 	return topologyModel{
 		ID:                  types.StringValue(t.ID),
 		Ecosystem:           types.StringValue(t.Ecosystem),
-		MetadataJSON:        rawToString(t.Metadata),
-		ServiceNowGroup:     types.StringValue(t.ServiceNowAssignment),
-		TemplateName:        types.StringValue(t.TemplateName),
-		TemplateAuthor:      types.StringValue(t.TemplateAuthor),
-		TemplateVersion:     types.StringValue(t.TemplateVersion),
-		AdditionalPropsJSON: rawToString(t.AdditionalProperties),
+		MetadataJSON:        rawToStringFromStruct(t.Metadata),
+		ServiceNowGroup:     types.StringValue(t.Metadata.ServiceNowAssignment),
+		TemplateName:        types.StringValue(t.Metadata.TemplateName),
+		TemplateAuthor:      types.StringValue(t.Metadata.TemplateAuthor),
+		TemplateVersion:     types.StringValue(t.Metadata.TemplateVersion),
+		AdditionalPropsJSON: rawToString(t.Metadata.AdditionalProperties),
 		State:               types.StringValue(t.State),
 		Env:                 types.StringValue(t.Env),
 		Name:                stringOrNull(t.Name),
@@ -195,7 +195,7 @@ func mapTopologyToModel(t clienttopo.Topology) topologyModel {
 		GreedyResolution:    boolOrNull(t.GreedyResolution),
 		PoliciesJSON:        rawToString(t.Policies),
 		AttributesJSON:      rawToString(t.Attributes),
-		Owner:               types.StringValue(t.Owner),
+		Owner:               rawToStringFromStruct(t.Metadata.Owner),
 	}
 }
 
@@ -218,4 +218,15 @@ func boolOrNull(b *bool) types.Bool {
 		return types.BoolNull()
 	}
 	return types.BoolValue(*b)
+}
+
+func rawToStringFromStruct(v any) types.String {
+	if v == nil {
+		return types.StringNull()
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return types.StringNull()
+	}
+	return rawToString(b)
 }

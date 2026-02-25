@@ -193,15 +193,17 @@ func (d *topologiesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 }
 
 func mapTopologyToModel(t clienttopo.Topology) topologyModel {
+	metadataJSON := rawToStringFromStruct(t.Metadata)
+	ownerJSON := rawToStringFromStruct(t.Metadata.Owner)
 	return topologyModel{
 		ID:                  types.StringValue(t.ID),
 		Ecosystem:           types.StringValue(t.Ecosystem),
-		MetadataJSON:        rawToString(t.Metadata),
-		ServiceNowGroup:     types.StringValue(t.ServiceNowAssignment),
-		TemplateName:        types.StringValue(t.TemplateName),
-		TemplateAuthor:      types.StringValue(t.TemplateAuthor),
-		TemplateVersion:     types.StringValue(t.TemplateVersion),
-		AdditionalPropsJSON: rawToString(t.AdditionalProperties),
+		MetadataJSON:        metadataJSON,
+		ServiceNowGroup:     types.StringValue(t.Metadata.ServiceNowAssignment),
+		TemplateName:        types.StringValue(t.Metadata.TemplateName),
+		TemplateAuthor:      types.StringValue(t.Metadata.TemplateAuthor),
+		TemplateVersion:     types.StringValue(t.Metadata.TemplateVersion),
+		AdditionalPropsJSON: rawToString(t.Metadata.AdditionalProperties),
 		State:               types.StringValue(t.State),
 		Env:                 types.StringValue(t.Env),
 		Name:                stringOrNull(t.Name),
@@ -212,15 +214,8 @@ func mapTopologyToModel(t clienttopo.Topology) topologyModel {
 		GreedyResolution:    boolOrNull(t.GreedyResolution),
 		PoliciesJSON:        rawToString(t.Policies),
 		AttributesJSON:      rawToString(t.Attributes),
-		Owner:               types.StringValue(t.Owner),
+		Owner:               ownerJSON,
 	}
-}
-
-func rawToString(b []byte) types.String {
-	if len(b) == 0 || string(b) == "null" {
-		return types.StringNull()
-	}
-	return types.StringValue(string(b))
 }
 
 func stringOrNull(s *string) types.String {
@@ -235,4 +230,22 @@ func boolOrNull(b *bool) types.Bool {
 		return types.BoolNull()
 	}
 	return types.BoolValue(*b)
+}
+
+func rawToString(b []byte) types.String {
+	if len(b) == 0 || string(b) == "null" {
+		return types.StringNull()
+	}
+	return types.StringValue(string(b))
+}
+
+func rawToStringFromStruct(v any) types.String {
+	if v == nil {
+		return types.StringNull()
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return types.StringNull()
+	}
+	return rawToString(b)
 }

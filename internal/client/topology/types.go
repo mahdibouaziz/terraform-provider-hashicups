@@ -13,26 +13,36 @@ type ListResponse struct {
 
 // Topology represents a topology item.
 type Topology struct {
-	ID                   string          `json:"id"`
-	Ecosystem            string          `json:"ecosystem"`
-	Metadata             json.RawMessage `json:"metadata"`
-	ServiceNowAssignment string          `json:"service_now_assignment_group"`
+	ID                 string          `json:"id"`
+	Ecosystem          string          `json:"ecosystem"`
+	Metadata           Metadata        `json:"metadata"`
+	State              string          `json:"state"`
+	Env                string          `json:"env"`
+	Name               *string         `json:"name"`
+	SubstitutionNodeID *string         `json:"substitution_node_id"`
+	CreatedAt          string          `json:"created_at"`
+	UpdatedAt          string          `json:"updated_at"`
+	Mock               bool            `json:"mock"`
+	GreedyResolution   *bool           `json:"greedy_resolution"`
+	Policies           json.RawMessage `json:"policies"`
+	Attributes         json.RawMessage `json:"attributes"`
+	NodesList          []TopologyNode  `json:"nodes_list"`
+}
+
+// Metadata groups template and ownership information.
+type Metadata struct {
+	Owner                Owner           `json:"owner"`
 	TemplateName         string          `json:"template_name"`
 	TemplateAuthor       string          `json:"template_author"`
 	TemplateVersion      string          `json:"template_version"`
 	AdditionalProperties json.RawMessage `json:"additional_properties"`
-	State                string          `json:"state"`
-	Env                  string          `json:"env"`
-	Name                 *string         `json:"name"`
-	SubstitutionNodeID   *string         `json:"substitution_node_id"`
-	CreatedAt            string          `json:"created_at"`
-	UpdatedAt            string          `json:"updated_at"`
-	Mock                 bool            `json:"mock"`
-	GreedyResolution     *bool           `json:"greedy_resolution"`
-	Policies             json.RawMessage `json:"policies"`
-	Attributes           json.RawMessage `json:"attributes"`
-	Owner                string          `json:"owner"`
-	NodesList            []TopologyNode  `json:"nodes_list"`
+}
+
+type Owner struct {
+	DL                      string   `json:"dl"`
+	Po                      string   `json:"po"`
+	Ecosystems              []string `json:"ecosystems"`
+	ServiceNowAssignmentGrp string   `json:"service_now_assignment_group"`
 }
 
 // TopologyNode represents nodes included when nodes=true.
